@@ -13,7 +13,11 @@ EOF
     exit 1
 }
 
-splitcount=100000
+if [ $# -ne 2 ]; then
+    usage
+fi
+
+splitcount=10000
 vcf=$1
 v=`basename $vcf`
 out=$2
@@ -45,8 +49,14 @@ cat $out/$f | /hpf/tools/centos6/python/2.7.6/bin/python /hpf/largeprojects/agol
 # Big move
 mv /localhd/\$PBS_JOBID/"$f".temp "$out"/
 # Small move
-mv "$out"/"$f".temp "$out"/"$f".cadd
+mv "$out"/"$f".temp "$out"/cadd."$f"
 EOF
 
     qsub "$script"
 done
+
+# Write combining script
+cat > "$out"/combine_pieces.sh << EOF
+cat cadd.* | grep -v '#' > ../cadd_scored_"$v"
+EOF
+chmod +x "$out"/combine_pieces.sh
