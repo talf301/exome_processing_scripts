@@ -59,12 +59,12 @@ def script(vcf_path, out_folder):
                 if field.startswith('ExonicFunc.refGene'):
                     func = field.split('=')[1]
         
-        # Assume that polyphen2 hdiv score is the 10th info field, otherwise look for it manually
-        if len(info) > 9 and info[9].startswith('Polyphen2_HDIV_score'):
-            score = info[9].split('=')[1]
+        # Assume that polyphen2 hdiv score is the 12th info field, otherwise look for it manually
+        if len(info) > 11 and info[11].startswith('Polyphen2_HVAR_score'):
+            score = info[11].split('=')[1]
         else:
             for field in info:
-                if field.startswith('Polyphen2_HDIV_score'):
+                if field.startswith('Polyphen2_HVAR_score'):
                     score = field.split('=')[1]
         
          # Do actual insertions
@@ -80,6 +80,7 @@ def script(vcf_path, out_folder):
         if vcf_line_count % 100000 == 0:
             logging.info('Finished parsing %d variants' % vcf_line_count)
             logging.info('Currently %d genes in dictionary' % len(genes.keys()))
+            break
         
     # Do writing
     # Create out folder if necessary
@@ -98,7 +99,7 @@ def script(vcf_path, out_folder):
             score = weights[var_ind]
             maf = float(sum([int(x) for x in exome_lines[i] if x == '1' or x == '2'])) / (2.0*len(cols))
             variant_file.write('\t'.join([info, gene, annotation, str(score), str(maf)]) + '\n')
-
+    
     # Write exomes
     for i, var in enumerate(variant_lines):
         info = '_'.join(var[:4])
@@ -114,6 +115,8 @@ def script(vcf_path, out_folder):
 
 
 def insert_variant(chrom, pos, ref, alt, func, genos, gene, variant_lines, exome_lines, weights, score, genes, which_alt=1):
+        if pos == '.':
+            return
         weights.append(score)
         #logging.debug(' '.join([chrom, pos, ref, alt]))
         #logging.debug(genos)
@@ -126,8 +129,8 @@ def insert_variant(chrom, pos, ref, alt, func, genos, gene, variant_lines, exome
    
 def parse_args(args):
     parser = ArgumentParser(description='Use annovar file to create exome and variant files.')
-    parser.add_argument('vcf_path', metavar = 'ANNO', help='The vcf file outputted by running annovar')
-    parser.add_argument('out_folder', metavar='OUT')
+    parser.add_argument('vcf_path', metavar = 'ANNO', help='The vcf file outputted by running annovar with the -vcf flag')
+    parser.add_argument('out_folder', metavar='OUT', help='The directory in which to put output files')
     return parser.parse_args(args)
 
 def main(args = sys.argv[1:]):
