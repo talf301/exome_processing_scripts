@@ -12,11 +12,16 @@ def script(vcf_path, out_folder):
     chr_state = 0
     vcf_file = open(vcf_path)
 
-    variant_lines = []
-    exome_lines = []
-    genes = defaultdict(list)
-    weights = []
     cols = []
+    
+    # Do writing
+    # Create out folder if necessary
+    if not os.path.exists(out_folder):
+        os.makedirs(out_folder)
+
+    # Make files
+    variant_file = open(out_folder + '/variants.txt', 'w')
+    exome_file = open(out_folder + '/exome.txt', 'w')
 
     vcf_line_count = 0
     for line in vcf_file:
@@ -71,42 +76,15 @@ def script(vcf_path, out_folder):
         if ',' in alt:
             alts = alt.split(',')
             for i, allele in enumerate(alts):
-                insert_variant(chrom, pos, ref, allele, func, genos, gene, variant_lines, exome_lines, weights, score, genes, which_alt=i+1)
+                insert_variant(chrom, pos, ref, allele, func, genos, gene, score, variant_file, exome_file, cols, which_alt=i+1)
         else:
-                insert_variant(chrom, pos, ref, alt, func, genos, gene, variant_lines, exome_lines, weights, score, genes)
+                insert_variant(chrom, pos, ref, alt, func, genos, gene, score, variant_file, exome_file, cols)
 
 
         vcf_line_count += 1
         if vcf_line_count % 100000 == 0:
             logging.info('Finished parsing %d variants' % vcf_line_count)
-            logging.info('Currently %d genes in dictionary' % len(genes.keys()))
-            break
         
-    # Do writing
-    # Create out folder if necessary
-    if not os.path.exists(out_folder):
-        os.makedirs(out_folder)
-
-    # Make files
-    variant_file = open(out_folder + '/variants.txt', 'w')
-    exome_file = open(out_folder + '/exome.txt', 'w')
-
-    # Write variants
-    for gene in sorted(genes.keys()):
-        for i, var_ind in enumerate(genes[gene]):
-            info = '_'.join(variant_lines[var_ind][:4])
-            annotation = variant_lines[var_ind][4]
-            score = weights[var_ind]
-            maf = float(sum([int(x) for x in exome_lines[i] if x == '1' or x == '2'])) / (2.0*len(cols))
-            variant_file.write('\t'.join([info, gene, annotation, str(score), str(maf)]) + '\n')
-    
-    # Write exomes
-    for i, var in enumerate(variant_lines):
-        info = '_'.join(var[:4])
-        for j, col in enumerate(cols):
-            if exome_lines[i][j] == '1' or exome_lines[i][j] == '2':
-                exome_file.write('\t'.join([info, col, exome_lines[i][j]]) + '\n')
-
     # Close files
     variant_file.close()
     exome_file.close()
@@ -114,18 +92,24 @@ def script(vcf_path, out_folder):
     logging.info('Done writing!')
 
 
-def insert_variant(chrom, pos, ref, alt, func, genos, gene, variant_lines, exome_lines, weights, score, genes, which_alt=1):
+def insert_variant(chrom, pos, ref, alt, func, genos, gene, variant_file, exome_file, score, cols, which_alt=1):
         if pos == '.':
             return
-        weights.append(score)
-        #logging.debug(' '.join([chrom, pos, ref, alt]))
-        #logging.debug(genos)
-        variant_lines.append([chrom, pos, ref, alt, func])
-        exome_lines.append([str(sum(int(y) == which_alt for y in x.split('/'))) if not (x == '.' or x == './.') else '.' for x in genos])
-        # zero indexed counting
-        for g in gene:
-            genes[g].append(len(variant_lines)-1)
 
+        # Make patient exome info a little easier to read
+        exome_line = [str(sum(int(y) == which_alt for y in x.split('/'))) if not (x == '.' or x == './.') else '.' for x in genos]
+
+        # Write variant info
+        info = '_'.join([chrom, pos, ref, alt])
+        maf = float(sum([int(x) for x in exome_lines[i] if x == '1' or x == '2'])) / (2.0*len(cols))
+        for g in gene:
+            variant_file.write('\t'.join([info, g, func, str(score), str(maf)]) + '\n')
+
+        # Write exome info
+        for i, col in enumerate(cols):
+            if exome_line[i] == '1' or exome_line[i] == '2':
+                exome_file.write('\t'.join([info, col, exome_line[i]]) + '\n')
+        
    
 def parse_args(args):
     parser = ArgumentParser(description='Use annovar file to create exome and variant files.')
