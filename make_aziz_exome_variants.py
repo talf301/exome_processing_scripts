@@ -92,7 +92,7 @@ def script(vcf_path, out_folder):
     logging.info('Done writing!')
 
 
-def insert_variant(chrom, pos, ref, alt, func, genos, gene, variant_file, exome_file, score, cols, which_alt=1):
+def insert_variant(chrom, pos, ref, alt, func, genos, gene, score, variant_file, exome_file, cols, which_alt=1):
         if pos == '.':
             return
 
@@ -101,7 +101,7 @@ def insert_variant(chrom, pos, ref, alt, func, genos, gene, variant_file, exome_
 
         # Write variant info
         info = '_'.join([chrom, pos, ref, alt])
-        maf = float(sum([int(x) for x in exome_lines[i] if x == '1' or x == '2'])) / (2.0*len(cols))
+        maf = float(sum([int(x) for x in exome_line if x == '1' or x == '2'])) / (2.0*len(cols))
         for g in gene:
             variant_file.write('\t'.join([info, g, func, str(score), str(maf)]) + '\n')
 
