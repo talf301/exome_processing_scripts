@@ -6,7 +6,7 @@ import logging
 from argparse import ArgumentParser
 from collections import defaultdict
 
-def script(vcf_path, out_folder):
+def script(vcf_path, out_folder, nonsense_score, indel_score):
     logging.basicConfig(level='DEBUG')
     # So we don't have to check if chr is there on every line
     chr_state = 0
@@ -76,9 +76,9 @@ def script(vcf_path, out_folder):
         if ',' in alt:
             alts = alt.split(',')
             for i, allele in enumerate(alts):
-                insert_variant(chrom, pos, ref, allele, func, genos, gene, score, variant_file, exome_file, cols, which_alt=i+1)
+                insert_variant(chrom, pos, ref, allele, func, genos, gene, score, variant_file, exome_file, cols, nonsense_score, indel_score, which_alt=i+1)
         else:
-                insert_variant(chrom, pos, ref, alt, func, genos, gene, score, variant_file, exome_file, cols)
+                insert_variant(chrom, pos, ref, alt, func, genos, gene, score, variant_file, exome_file, nonsense_score, indel_score, cols)
 
 
         vcf_line_count += 1
@@ -92,31 +92,49 @@ def script(vcf_path, out_folder):
     logging.info('Done writing!')
 
 
-def insert_variant(chrom, pos, ref, alt, func, genos, gene, score, variant_file, exome_file, cols, which_alt=1):
-        if func == 'synonymous_SNV' or func == '.' or func == 'unknown' or func == 'stoploss':
-            return
-        if pos == '.':
-            return
+def insert_variant(chrom, pos, ref, alt, func, genos, gene, score, variant_file, exome_file, cols, nonsense_score, indel_score, which_alt=1):
 
-        # Make patient exome info a little easier to read
-        exome_line = [str(sum(int(y) == which_alt for y in x.split('/'))) if not (x == '.' or x == './.') else '.' for x in genos]
+    # If the variant info was missing, skip
+    if pos == '.':
+        return
 
-        # Write variant info
-        info = '_'.join([chrom, pos, ref, alt])
-        maf = float(sum([int(x) for x in exome_line if x == '1' or x == '2'])) / (2.0*len(cols))
-        for g in gene:
-            variant_file.write('\t'.join([info, g, func, str(score), str(maf)]) + '\n')
+    # Filter out anything unknown or not useful
+    if func in ['synonymous_SNV', '.', 'unknown']:
+        return
+    
+    # Nonsense scores
+    if func in ['stopgain', 'stoploss', 'frameshift insertion', 'frameshift deletion']:
+        score = nonsense_score
 
-        # Write exome info
-        for i, col in enumerate(cols):
-            if exome_line[i] == '1' or exome_line[i] == '2':
-                exome_file.write('\t'.join([info, col, exome_line[i]]) + '\n')
+    # Indel scores
+    if func in ['nonframeshift deletion', 'nonframeshift insertion', 'splicing']:
+        score = indel_score
+
+    # If there's still no score, skip
+    if score == '.':
+        return
+
+    # Make patient exome info a little easier to read
+    exome_line = [str(sum(int(y) == which_alt for y in x.split('/'))) if not (x == '.' or x == './.') else '.' for x in genos]
+
+    # Write variant info
+    info = '_'.join([chrom, pos, ref, alt])
+    maf = float(sum([int(x) for x in exome_line if x == '1' or x == '2'])) / (2.0*len(cols))
+    for g in gene:
+        variant_file.write('\t'.join([info, g, func, str(score), str(maf)]) + '\n')
+
+    # Write exome info
+    for i, col in enumerate(cols):
+        if exome_line[i] == '1' or exome_line[i] == '2':
+            exome_file.write('\t'.join([info, col, exome_line[i]]) + '\n')
         
    
 def parse_args(args):
     parser = ArgumentParser(description='Use annovar file to create exome and variant files.')
     parser.add_argument('vcf_path', metavar = 'ANNO', help='The vcf file outputted by running annovar with the -vcf flag')
     parser.add_argument('out_folder', metavar='OUT', help='The directory in which to put output files')
+    parser.add_argument('nonsense_score', metavar='NONSENSE', type=float, default=0.9, help='The score to give stop gain, stop loss, and FS_insertion and deletions. Default is 0.9')
+    parser.add_argument('indel_score', metavar='INDEL', type=float, default=0.8, help='The score to give to non frameshift indels. Default is 0.8')
     return parser.parse_args(args)
 
 def main(args = sys.argv[1:]):
