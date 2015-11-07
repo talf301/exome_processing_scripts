@@ -93,6 +93,8 @@ def script(vcf_path, out_folder):
 
 
 def insert_variant(chrom, pos, ref, alt, func, genos, gene, score, variant_file, exome_file, cols, which_alt=1):
+        if func == 'synonymous_SNV' or func == '.' or func == 'unknown' or func == 'stoploss':
+            return
         if pos == '.':
             return
 
