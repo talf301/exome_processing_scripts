@@ -133,8 +133,8 @@ def parse_args(args):
     parser = ArgumentParser(description='Use annovar file to create exome and variant files.')
     parser.add_argument('vcf_path', metavar = 'ANNO', help='The vcf file outputted by running annovar with the -vcf flag')
     parser.add_argument('out_folder', metavar='OUT', help='The directory in which to put output files')
-    parser.add_argument('nonsense_score', metavar='NONSENSE', type=float, default=0.9, help='The score to give stop gain, stop loss, and FS_insertion and deletions. Default is 0.9')
-    parser.add_argument('indel_score', metavar='INDEL', type=float, default=0.8, help='The score to give to non frameshift indels. Default is 0.8')
+    parser.add_argument('--nonsense_score', metavar='NONSENSE', type=float, default=0.9, help='The score to give stop gain, stop loss, and FS_insertion and deletions. Default is 0.9')
+    parser.add_argument('--indel_score', metavar='INDEL', type=float, default=0.8, help='The score to give to non frameshift indels. Default is 0.8')
     return parser.parse_args(args)
 
 def main(args = sys.argv[1:]):
