@@ -78,7 +78,7 @@ def script(vcf_path, out_folder, nonsense_score, indel_score):
             for i, allele in enumerate(alts):
                 insert_variant(chrom, pos, ref, allele, func, genos, gene, score, variant_file, exome_file, cols, nonsense_score, indel_score, which_alt=i+1)
         else:
-                insert_variant(chrom, pos, ref, alt, func, genos, gene, score, variant_file, exome_file, nonsense_score, indel_score, cols)
+                insert_variant(chrom, pos, ref, alt, func, genos, gene, score, variant_file, exome_file, cols, nonsense_score, indel_score)
 
 
         vcf_line_count += 1
